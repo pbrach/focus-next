@@ -16,6 +16,7 @@ Where DIRECTION is one of:
 # 'installation'
 Dependencies are
 * xdotool
+* x11-utils (or only: xwininfo)
 * nodejs (current stable)
 
 Simply bind global shortcuts commands like this:
