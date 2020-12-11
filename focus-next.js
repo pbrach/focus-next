@@ -11,7 +11,6 @@ class WindowSpec
     }
 }
 
-
 function handleError(error, stderr, rejectCallback)
 {
     if (error || stderr) {
@@ -20,6 +19,7 @@ function handleError(error, stderr, rejectCallback)
         rejectCallback(errorText);
     }
 }
+
 function getWinIds()
 {
     return new Promise((resolve, reject) =>
@@ -83,8 +83,6 @@ function getGeometry(id)
     });
 }
 
-// selectwindow
-// windowfocus
 function focusWindow(id)
 {
     const command = `xdotool windowraise ${id} && xdotool windowfocus ${id}`;
@@ -146,7 +144,6 @@ function selectDirection()
 
 async function focusSetter(axis, operator, currentFocusedWindow, windows)
 {
-
     const candidates = [];
     for (const id in windows) {
         if (!windows.hasOwnProperty(id))
