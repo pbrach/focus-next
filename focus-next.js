@@ -1,5 +1,7 @@
 const { exec } = require('child_process');
 
+var global_log = '';
+
 class WindowSpec
 {
     constructor()
@@ -75,8 +77,8 @@ function getGeometry(id)
 
             const match = stdout.match(regexp);
             const result = {
-                position: { left: match[1], top: match[2] },
-                dimension: { width: match[3], height: match[4] },
+                position: { left: parseInt(match[1]), top: parseInt(match[2]) },
+                dimension: { width: parseInt(match[3]), height: parseInt(match[4]) },
             }
             resolve(result);
         });
@@ -126,24 +128,25 @@ function selectDirection()
 {
     var directionArg = process.argv[2];
 
-    console.log(directionArg);
-
+    global_log += directionArg.toString();
+    
     switch (directionArg) {
-        case 'north':
-            return focusSetter.bind(null, 'top', (other, current) => other >= current);
-        case 'west':
-            return focusSetter.bind(null, 'left', (other, current) => other >= current);
-        case 'south':
+        case 'up':
             return focusSetter.bind(null, 'top', (other, current) => other <= current);
-        case 'east':
+        case 'left':
             return focusSetter.bind(null, 'left', (other, current) => other <= current);
+        case 'down':
+            return focusSetter.bind(null, 'top', (other, current) => other >= current);
+        case 'right':
+            return focusSetter.bind(null, 'left', (other, current) => other >= current);
         default:
             return 'unkown direction command';
     }
 }
 
-async function focusSetter(axis, operator, currentFocusedWindow, windows)
+async function focusSetter(axis, isInDirection, currentFocusedWindow, windows)
 {
+    global_log += `\n focusSetter:: axis:${axis}, ${currentFocusedWindow.name}, windows.len: ${Object.keys(windows).length}`;
     const candidates = [];
     for (const id in windows) {
         if (!windows.hasOwnProperty(id))
@@ -162,7 +165,7 @@ async function focusSetter(axis, operator, currentFocusedWindow, windows)
         }
 
         // operator: other is in direction of dimCurrent...
-        if (!operator(dimOther, dimCurrent))
+        if (!isInDirection(dimOther, dimCurrent))
             continue;
 
         candidates.push(wnd);
@@ -171,10 +174,14 @@ async function focusSetter(axis, operator, currentFocusedWindow, windows)
 
     candidates.sort((a, b) => a.dist - b.dist);
 
+    global_log += '\nSorted candidates: ' + candidates.length;
     const nextWnd = candidates[0];
-    if (!nextWnd)
+    if (!nextWnd) {
+        global_log += '\n!!!No candidate no focus!';
         return;
+    }
 
+    global_log += '\n Focussing: ' + nextWnd.name;
     await focusWindow(nextWnd.id);
 }
 
@@ -182,12 +189,25 @@ async function focusSetter(axis, operator, currentFocusedWindow, windows)
 {
     const windows = await getCurrentWindows();
 
-    console.log(windows);
-
     const focusedId = await getFocusedId();
     const currentFocusedWin = windows[focusedId];
     delete windows[focusedId];
 
     const _focusSetter = selectDirection();
     _focusSetter(currentFocusedWin, windows);
+
+    // writeLog();
 })();
+
+function writeLog()
+{
+    fs = require('fs');
+    global_log += '\n';
+    fs.writeFile('focus_next_log.out', global_log, function (err, data)
+    {
+        if (err)
+            return console.log(err);
+
+        console.log(global_log);
+    });
+}
