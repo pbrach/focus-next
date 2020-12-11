@@ -115,13 +115,33 @@ async function getCurrentWindows()
         winSpec.position = geom.position;
         winSpec.dimension = geom.dimension;
 
-        if (winSpec.dimension.width * winSpec.dimension.height < 5)
+        const isTooSmallForRealWindow = winSpec.dimension.width * winSpec.dimension.height < 5;
+        if (isTooSmallForRealWindow)
             continue;
 
+        const isHidden = await isWindowHidden(winSpec.id)
+        if (isHidden)
+            continue;
+            
         windows[winSpec.id] = winSpec;
     }
 
     return windows;
+}
+
+function isWindowHidden(id)
+{
+    const command = `xwininfo -wm -id ${id}`;
+    return new Promise((resolve, reject) =>
+    {
+        exec(command, (error, stdout, stderr) =>
+        {
+            handleError(error, stderr, reject);
+
+            const result = stdout.split('Window state:')[1].includes('Hidden');
+            resolve(result);
+        });
+    });
 }
 
 function selectDirection()
@@ -129,7 +149,7 @@ function selectDirection()
     var directionArg = process.argv[2];
 
     global_log += directionArg.toString();
-    
+
     switch (directionArg) {
         case 'up':
             return focusSetter.bind(null, 'top', (other, current) => other <= current);
@@ -147,6 +167,25 @@ function selectDirection()
 async function focusSetter(axis, isInDirection, currentFocusedWindow, windows)
 {
     global_log += `\n focusSetter:: axis:${axis}, ${currentFocusedWindow.name}, windows.len: ${Object.keys(windows).length}`;
+
+    const candidateWindows = _getFocusCandidates(axis, isInDirection, currentFocusedWindow, windows)
+    global_log += '\nSorted candidates: ' + candidateWindows.length;
+
+    // pick best candidate:
+    candidateWindows.sort((a, b) => a.dist - b.dist);
+    const nextWnd = candidateWindows[0];
+
+    if (!nextWnd) {
+        global_log += '\n!!!No candidate no focus!';
+        return;
+    }
+
+    global_log += '\n Focussing: ' + nextWnd.name;
+    await focusWindow(nextWnd.id);
+}
+
+function _getFocusCandidates(axis, isInDirection, currentFocusedWindow, windows)
+{
     const candidates = [];
     for (const id in windows) {
         if (!windows.hasOwnProperty(id))
@@ -171,18 +210,7 @@ async function focusSetter(axis, isInDirection, currentFocusedWindow, windows)
         candidates.push(wnd);
         wnd.dist = (currentFocusedWindow.position.left - wnd.position.left) ** 2 + (currentFocusedWindow.position.top - wnd.position.top) ** 2;
     }
-
-    candidates.sort((a, b) => a.dist - b.dist);
-
-    global_log += '\nSorted candidates: ' + candidates.length;
-    const nextWnd = candidates[0];
-    if (!nextWnd) {
-        global_log += '\n!!!No candidate no focus!';
-        return;
-    }
-
-    global_log += '\n Focussing: ' + nextWnd.name;
-    await focusWindow(nextWnd.id);
+    return candidates;
 }
 
 (async () =>
