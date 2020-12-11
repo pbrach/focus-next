@@ -85,7 +85,8 @@ function getGeometry(id)
 
 // selectwindow
 // windowfocus
-function focusWindow(id){
+function focusWindow(id)
+{
     const command = `xdotool windowraise ${id} && xdotool windowfocus ${id}`;
     return new Promise((resolve, reject) =>
     {
@@ -98,7 +99,8 @@ function focusWindow(id){
     });
 }
 
-async function getCurrentWindows(){
+async function getCurrentWindows()
+{
     const ids = await getWinIds();
 
     const windows = {};
@@ -118,8 +120,65 @@ async function getCurrentWindows(){
 
         windows[winSpec.id] = winSpec;
     }
-    
+
     return windows;
+}
+
+function selectDirection()
+{
+    var directionArg = process.argv[2];
+
+    console.log(directionArg);
+
+    switch (directionArg) {
+        case 'north':
+            return focusSetter.bind(null, 'top', (other, current) => other >= current);
+        case 'west':
+            return focusSetter.bind(null, 'left', (other, current) => other >= current);
+        case 'south':
+            return focusSetter.bind(null, 'top', (other, current) => other <= current);
+        case 'east':
+            return focusSetter.bind(null, 'left', (other, current) => other <= current);
+        default:
+            return 'unkown direction command';
+    }
+}
+
+async function focusSetter(axis, operator, currentFocusedWindow, windows)
+{
+
+    const candidates = [];
+    for (const id in windows) {
+        if (!windows.hasOwnProperty(id))
+            continue;
+
+        const wnd = windows[id];
+        let dimOther = 0;
+        let dimCurrent = 0;
+        if (axis === 'top') {
+            dimOther = wnd.position.top;
+            dimCurrent = currentFocusedWindow.position.top;
+        }
+        else if (axis === 'left') {
+            dimOther = wnd.position.left;
+            dimCurrent = currentFocusedWindow.position.left;
+        }
+
+        // operator: other is in direction of dimCurrent...
+        if (!operator(dimOther, dimCurrent))
+            continue;
+
+        candidates.push(wnd);
+        wnd.dist = (currentFocusedWindow.position.left - wnd.position.left) ** 2 + (currentFocusedWindow.position.top - wnd.position.top) ** 2;
+    }
+
+    candidates.sort((a, b) => a.dist - b.dist);
+
+    const nextWnd = candidates[0];
+    if (!nextWnd)
+        return;
+
+    await focusWindow(nextWnd.id);
 }
 
 (async () =>
@@ -127,15 +186,11 @@ async function getCurrentWindows(){
     const windows = await getCurrentWindows();
 
     console.log(windows);
-    
+
     const focusedId = await getFocusedId();
-    console.log(windows[focusedId]);
+    const currentFocusedWin = windows[focusedId];
     delete windows[focusedId];
-    for(const id in windows)
-    {
-        if(!windows.hasOwnProperty(id))
-            continue;
-        
-        await focusWindow(id);
-    }
+
+    const _focusSetter = selectDirection();
+    _focusSetter(currentFocusedWin, windows);
 })();
