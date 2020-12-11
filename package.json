@@ -1,0 +1,12 @@
+{
+  "name": "focus-next",
+  "version": "1.0.0",
+  "description": "x11 tool to focus windows based on proximity to the current active window",
+  "main": "focus-next.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "pbrach",
+  "license": "ISC",
+  "devDependencies": {}
+}
