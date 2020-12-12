@@ -27,6 +27,7 @@ async function getCurrentVisibleWindows()
 
         const geom = await api.getWindowGeometry(winSpec.id);
         winSpec.position = geom.position;
+        global_log += `\n           (${geom.position.left}/${geom.position.top})`;
         winSpec.dimension = geom.dimension;
 
         const isTooSmallForRealWindow = winSpec.dimension.width * winSpec.dimension.height < 5;
@@ -61,7 +62,7 @@ function selectFocusCandidateFilter(directionArg)
     }
 }
 
-async function trySetNextFocus(focusCandidateFilter, currentFocusedWindow, windows)
+async function tryGetNextFocusWindowId(focusCandidateFilter, currentFocusedWindow, windows)
 {
     const { candidates, tooCloseCandidates } = focusCandidateFilter(currentFocusedWindow, windows);
     global_log += '\ncandidates: ' + candidates.length;
@@ -76,21 +77,23 @@ async function trySetNextFocus(focusCandidateFilter, currentFocusedWindow, windo
     // if no normal candidates exist, check the tooClose-list
     else if (tooCloseCandidates.length)
         nextWnd = tooCloseCandidates[0];
+        
+    //// Would allow to refocus if in current direction no window exists
+    // else if(Object.keys(windows).length){
+    //     nextWnd = windows[Object.keys(windows)[0]];
+    // }
 
-    if (!nextWnd) {
-        global_log += '\n!!! Found no window to focus!';
-        return;
-    }
+    if (!nextWnd)
+        return null;
 
-    global_log += '\n Focussing: ' + nextWnd.name;
-    await api.focusWindow(nextWnd.id);
+    return nextWnd.id;
 }
 
 function _focusCandidateFilter(axis, isInDirection, currentFocusedWindow, windows)
 {
     global_log += '\n   _focusCandidateFilter:';
     global_log += `\n     axis:${axis}`;
-    global_log += `\n     current focused window: ${currentFocusedWindow.name}`;
+    global_log += `\n     current focused window: [${currentFocusedWindow.name}]`;
     global_log += `\n     total #other windows: ${Object.keys(windows).length}\n`;
 
     const candidates = [];
@@ -143,25 +146,39 @@ function _getDistance(currentWindow, otherWindow)
 (async () =>
 {
     global_log += `Starting 'focus-next.js'...\n\n`;
+    
+    // 1.) get state: all currently visible windos and their positions
+    global_log += '\n   >trying to get all windows...';
     const windows = await getCurrentVisibleWindows();
 
     const focusedId = await api.getCurrentFocusedWindowId();
     const currentFocusedWin = windows[focusedId];
     delete windows[focusedId];
 
+    // 2.) find id of next window to focus
+    global_log += '\n   >trying to find next window id...';
     var directionArg = process.argv[2];
     const focusCandidateFilter = selectFocusCandidateFilter(directionArg);
-    await trySetNextFocus(focusCandidateFilter, currentFocusedWin, windows);
-
+    const nextId = await tryGetNextFocusWindowId(focusCandidateFilter, currentFocusedWin, windows);
+    
+    // 3.) focus the found 'next'
+    global_log += '\n   >trying to focus find next window id...';
+    if (nextId) {
+        global_log += `\n focussing: [${windows[nextId].name}]`;
+        await api.focusWindow(nextId);
+    }
+    else
+        global_log += '\n!!! Found no window to focus!';
+        
     global_log += `\n\n...finished 'focus-next.js'`;
-    writeLog();
+    // writeLog();
 })();
 
 function writeLog()
 {
     fs = require('fs');
     global_log += '\n';
-    fs.writeFile('/home/haphi/focus_next_log.out', global_log, function (err, data)
+    fs.writeFile('focus_next_log.out', global_log, function (err, data)
     {
         if (err)
             return console.log(err);
