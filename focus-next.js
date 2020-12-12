@@ -14,7 +14,7 @@ class MyOwnShittyFileLogger
     {
         this.the_log += '\n' + newLogText;
 
-        this.fs.writeFile(this.filePath, this.the_log, function (err, data)
+        this.fs.writeFileSync(this.filePath, this.the_log, function (err, data)
         {
             // its futile... anyways
             if (err)
@@ -200,13 +200,26 @@ function _checkInput(directionArg)
 
     const errorString = 'Given direction argument was wrong. I got: ' + directionArg;
     console.error(errorString);
-    fileLogger.writeLog('\n' + errorString);
+    fileLogger.writeLog(errorString);
     console.log('The direction arg should be one of:');
     console.log(acceptedArgs);
     process.exit(1);
 }
 
-
+async function emergencyFocusAnyWindow(foundKeys, windows)
+{
+    fileLogger.writeLog(`   WARNING - no starting window found: selecting first window I get!`);
+    if (!foundKeys.length) {
+        fileLogger.writeLog(`   ERROR - also no target windows found: nothing open, nothing todo. I quit!`);
+        process.exit(1);
+    }
+    const emergencyId = foundKeys[0];
+    fileLogger.writeLog(`focussing: [${windows[emergencyId].name}], id: ${emergencyId}`)
+    
+    await api.focusNext(emergencyId);
+    fileLogger.writeLog(`\n...finished 'focus-next.js'`);
+    process.exit(0);
+}
 
 /**
  * Glorious main method/entry-point
@@ -214,6 +227,9 @@ function _checkInput(directionArg)
 (async () =>
 {
     fileLogger.writeLog(`Starting 'focus-next.js'...\n\n`);
+
+    var directionArg = process.argv[2];
+    _checkInput(directionArg);
 
     // 1.) get state: all currently visible windos and their positions
     fileLogger.writeLog(`1:: trying to get all windows...`);
@@ -223,10 +239,15 @@ function _checkInput(directionArg)
     const currentFocusedWin = windows[focusedId];
     delete windows[focusedId];
 
+    const foundKeys = Object.keys(windows);
+    if (!currentFocusedWin)
+        await emergencyFocusAnyWindow(foundKeys, windows);
+
+    fileLogger.writeLog(`   current window: ${currentFocusedWin}, id: ${focusedId}`);
+    fileLogger.writeLog(`          Pos: (${currentFocusedWin.position.left}/${currentFocusedWin.position.top}) Name: [${currentFocusedWin.name}] Id: ${currentFocusedWin.id}`);
+
     // 2.) find id of next window to focus
     fileLogger.writeLog(`\n\n2 :: trying to find next window id...`);
-    var directionArg = process.argv[2];
-    _checkInput(directionArg);
     const focusCandidateFilter = selectFocusCandidateFilter(directionArg);
     const nextId = await tryGetNextFocusWindowId(focusCandidateFilter, currentFocusedWin, windows);
 
