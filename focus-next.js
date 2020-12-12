@@ -212,7 +212,7 @@ function _checkInput(directionArg)
         global_log += '\n!!! Found no window to focus!';
 
     global_log += `\n\n...finished 'focus-next.js'`;
-    writeLog();
+    // writeLog();
 })();
 
 function writeLog()
