@@ -22,7 +22,10 @@ async function getCurrentVisibleWindows()
         const winSpec = new WindowSpec();
         winSpec.id = ids[idx];
         winSpec.name = await api.getWindowName(winSpec.id);
-        if (winSpec.name === 'Desktop')
+        if (
+            winSpec.name === 'Desktop' 
+            // || winSpec.name === 'Peek'
+        )
             continue;
 
         const geom = await api.getWindowGeometry(winSpec.id);
@@ -77,7 +80,7 @@ async function tryGetNextFocusWindowId(focusCandidateFilter, currentFocusedWindo
     // if no normal candidates exist, check the tooClose-list
     else if (tooCloseCandidates.length)
         nextWnd = tooCloseCandidates[0];
-        
+
     //// Would allow to refocus if in current direction no window exists
     // else if(Object.keys(windows).length){
     //     nextWnd = windows[Object.keys(windows)[0]];
@@ -146,7 +149,7 @@ function _getDistance(currentWindow, otherWindow)
 (async () =>
 {
     global_log += `Starting 'focus-next.js'...\n\n`;
-    
+
     // 1.) get state: all currently visible windos and their positions
     global_log += '\n   >trying to get all windows...';
     const windows = await getCurrentVisibleWindows();
@@ -160,7 +163,7 @@ function _getDistance(currentWindow, otherWindow)
     var directionArg = process.argv[2];
     const focusCandidateFilter = selectFocusCandidateFilter(directionArg);
     const nextId = await tryGetNextFocusWindowId(focusCandidateFilter, currentFocusedWin, windows);
-    
+
     // 3.) focus the found 'next'
     global_log += '\n   >trying to focus find next window id...';
     if (nextId) {
@@ -169,7 +172,7 @@ function _getDistance(currentWindow, otherWindow)
     }
     else
         global_log += '\n!!! Found no window to focus!';
-        
+
     global_log += `\n\n...finished 'focus-next.js'`;
     // writeLog();
 })();

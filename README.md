@@ -42,6 +42,35 @@ So currently I decided on the following assumptions:
 Only allow focus on the filtered windows. So the command `focus-next left` 
 will never allow to select a window to the right of the current focused window, 
 even if there is no window on the left side of it.
+* Prioritize to focus windows that are positioned along the focus direction. So even
+if a window is closer and in the correct direction, it should not be selected if 
+there is a more distanced window that is reachable with a lower deviation in angle.
+```
+X----                     X---- 
+| A |                     | C |
+-----    X----            -----
+         | B |         
+         -----          
+        
+         
+        
+ X----
+ | D |
+ -----        
+         
+```
+If **A** is focused, `focus-next right` should focus **C** next instead of **B**. 
+However, this might lead to a problem: if the user now actually wants to focus 
+**B**, it might not be possible: in 'right' direction **C** would be selected 
+and in 'down' direction **D** would be selected (Because in both cases another
+window has a better angle). To handle this scenario, the diagonal selection 
+with a combination of two arrows would be needed.
+
+This is something difficult: an OS shortcut is normally not able to handle two
+arrows in a combination... so focus-next needs to handle these scenarios: if 
+within 300 msec a second call to focus-next in a different direction is 
+triggered, the diagonal mode is started and the first call removed.
+
 * If a window is minimized: don't allow to raise and focus it
 * If a window can't be seen (behind other windows) make it possible to focus,
 but with last priority to other windows, because the user probably wants to 
