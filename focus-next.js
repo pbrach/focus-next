@@ -22,7 +22,7 @@ function handleError(error, stderr, rejectCallback)
     }
 }
 
-function getWinIds()
+function getCurrentWindowIds()
 {
     return new Promise((resolve, reject) =>
     {
@@ -37,7 +37,7 @@ function getWinIds()
     });
 }
 
-function getName(id)
+function getWindowName(id)
 {
     const command = `xdotool getwindowname ${id}`;
     return new Promise((resolve, reject) =>
@@ -51,7 +51,7 @@ function getName(id)
     });
 }
 
-function getFocusedId()
+function getCurrentFocusedWindowId()
 {
     const command = `xdotool getwindowfocus`;
     return new Promise((resolve, reject) =>
@@ -66,7 +66,7 @@ function getFocusedId()
 }
 
 const regexp = /^Window\s.*\n\s\sPosition:\s(.*),(.*)\s\(.*\n\s\sGeometry:\s(.*)x(.*)/m;
-function getGeometry(id)
+function getWindowGeometry(id)
 {
     const command = `xdotool getwindowgeometry ${id}`;
     return new Promise((resolve, reject) =>
@@ -99,19 +99,19 @@ function focusWindow(id)
     });
 }
 
-async function getCurrentWindows()
+async function getCurrentVisibleWindows()
 {
-    const ids = await getWinIds();
+    const ids = await getCurrentWindowIds();
 
     const windows = {};
     for (let idx = 0; idx < ids.length; idx++) {
         const winSpec = new WindowSpec();
         winSpec.id = ids[idx];
-        winSpec.name = await getName(winSpec.id);
+        winSpec.name = await getWindowName(winSpec.id);
         if (winSpec.name === 'Desktop')
             continue;
 
-        const geom = await getGeometry(winSpec.id);
+        const geom = await getWindowGeometry(winSpec.id);
         winSpec.position = geom.position;
         winSpec.dimension = geom.dimension;
 
@@ -147,10 +147,8 @@ function isWindowHidden(id)
     });
 }
 
-function selectDirection()
+function selectFocusCandidateFilter(directionArg)
 {
-    var directionArg = process.argv[2];
-
     global_log += directionArg.toString();
 
     switch (directionArg) {
@@ -167,7 +165,7 @@ function selectDirection()
     }
 }
 
-async function focusSetter(focusCandidateFilter, currentFocusedWindow, windows)
+async function trySetNextFocus(focusCandidateFilter, currentFocusedWindow, windows)
 {
     const candidateWindows = focusCandidateFilter(currentFocusedWindow, windows)
     global_log += '\nSorted candidates: ' + candidateWindows.length;
@@ -217,23 +215,24 @@ function _focusCandidateFilter(axis, isInDirection, currentFocusedWindow, window
 
 (async () =>
 {
-    const windows = await getCurrentWindows();
+    const windows = await getCurrentVisibleWindows();
 
-    const focusedId = await getFocusedId();
+    const focusedId = await getCurrentFocusedWindowId();
     const currentFocusedWin = windows[focusedId];
     delete windows[focusedId];
 
-    const focusCandidateFilter = selectDirection();
-    await focusSetter(focusCandidateFilter, currentFocusedWin, windows);
+    var directionArg = process.argv[2];
+    const focusCandidateFilter = selectFocusCandidateFilter(directionArg);
+    await trySetNextFocus(focusCandidateFilter, currentFocusedWin, windows);
 
-    writeLog();
+    // writeLog();
 })();
 
 function writeLog()
 {
     fs = require('fs');
     global_log += '\n';
-    fs.writeFile('/home/haphi/focus_next_log.out', global_log, function (err, data)
+    fs.writeFile('/focus_next_log.out', global_log, function (err, data)
     {
         if (err)
             return console.log(err);
