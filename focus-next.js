@@ -122,7 +122,7 @@ async function getCurrentWindows()
         const isHidden = await isWindowHidden(winSpec.id)
         if (isHidden)
             continue;
-            
+
         windows[winSpec.id] = winSpec;
     }
 
@@ -138,8 +138,11 @@ function isWindowHidden(id)
         {
             handleError(error, stderr, reject);
 
-            const result = stdout.split('Window state:')[1].includes('Hidden');
-            resolve(result);
+            const stateText = stdout.split('Window state:')[1];
+            if (!stateText)
+                resolve(false);
+            else
+                resolve(stateText.includes('Hidden'));
         });
     });
 }
@@ -224,14 +227,14 @@ function _getFocusCandidates(axis, isInDirection, currentFocusedWindow, windows)
     const _focusSetter = selectDirection();
     _focusSetter(currentFocusedWin, windows);
 
-    // writeLog();
+    writeLog();
 })();
 
 function writeLog()
 {
     fs = require('fs');
     global_log += '\n';
-    fs.writeFile('focus_next_log.out', global_log, function (err, data)
+    fs.writeFile('/home/haphi/focus_next_log.out', global_log, function (err, data)
     {
         if (err)
             return console.log(err);
