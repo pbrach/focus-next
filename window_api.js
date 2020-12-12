@@ -81,11 +81,11 @@ exports.isWindowHidden = function (id)
         {
             _handleError(error, stderr, reject);
 
-            const stateText = stdout.split('Window state:')[1];
+            const stateText = stdout.split('Window type:')[1];
             if (!stateText)
                 resolve(false);
             else
-                resolve(stateText.includes('Hidden'));
+                resolve(stateText.includes('Hidden') || !stateText.includes('Normal'));
         });
     });
 }

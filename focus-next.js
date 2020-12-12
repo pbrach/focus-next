@@ -32,7 +32,6 @@ async function getCurrentVisibleWindows()
 
         const geom = await api.getWindowGeometry(winSpec.id);
         winSpec.position = geom.position;
-        global_log += `\n           (${geom.position.left}/${geom.position.top})`;
         winSpec.dimension = geom.dimension;
 
         const isTooSmallForRealWindow = winSpec.dimension.width * winSpec.dimension.height < 5;
@@ -42,6 +41,9 @@ async function getCurrentVisibleWindows()
         const isHidden = await api.isWindowHidden(winSpec.id)
         if (isHidden)
             continue;
+
+        const posString = `(${geom.position.left}/${geom.position.top})`;
+        global_log += `\n           Pos: ${posString}${' '.repeat(11 - posString.length)} Name: [${winSpec.name.slice(-30)}] Id: ${winSpec.id}`;
 
         windows[winSpec.id] = winSpec;
     }
@@ -84,6 +86,7 @@ async function tryGetNextFocusWindowId(focusCandidateFilter, currentFocusedWindo
         nextWnd = tooCloseCandidates[0];
 
     //// Would allow to refocus if in current direction no window exists
+    //// but I don't want that ...for now
     // else if(Object.keys(windows).length){
     //     nextWnd = windows[Object.keys(windows)[0]];
     // }
