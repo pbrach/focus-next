@@ -168,7 +168,7 @@ function _getDistance(currentWindow, otherWindow)
 
 function _checkInput(directionArg)
 {
-    const acceptedArgs = ['left', 'top', 'right', 'down'];
+    const acceptedArgs = ['left', 'up', 'right', 'down'];
     if (acceptedArgs.includes(directionArg))
         return;
 
