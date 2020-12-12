@@ -203,7 +203,7 @@ function _checkInput(directionArg)
     global_log += '\n   >trying to focus find next window id...';
     if (nextId) {
         global_log += `\n focussing: [${windows[nextId].name}]`;
-        await api.focusWindow(nextId);
+        await api.focusNext(nextId);
     }
     else
         global_log += '\n!!! Found no window to focus!';

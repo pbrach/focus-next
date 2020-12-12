@@ -9,7 +9,7 @@ function _handleError(error, stderr, rejectCallback)
     }
 }
 
-exports.getCurrentWindowIds = function()
+exports.getCurrentWindowIds = function ()
 {
     return new Promise((resolve, reject) =>
     {
@@ -90,16 +90,49 @@ exports.isWindowHidden = function (id)
     });
 }
 
-exports.focusWindow = function (id)
+
+exports.focusNext = async function (id)
 {
-    const command = `xdotool windowraise ${id} && xdotool windowfocus ${id}`;
+    await raiseWindow(id);
+    await focusWindow(id);
+    await activateWindow(id);
+}
+
+function focusWindow(id)
+{
+    const command = `xdotool windowfocus --sync ${id}`;
     return new Promise((resolve, reject) =>
     {
         exec(command, (error, stdout, stderr) =>
         {
             _handleError(error, stderr, reject);
-
             resolve();
         });
     });
+}
+
+function raiseWindow(id)
+{
+    const command = `xdotool windowraise ${id}`;
+    return new Promise((resolve, reject) =>
+    {
+        exec(command, (error, stdout, stderr) =>
+        {
+            _handleError(error, stderr, reject);
+            resolve();
+        });
+    })
+}
+
+function activateWindow(id)
+{
+    const command = `xdotool windowactivate --sync ${id}`;
+    return new Promise((resolve, reject) =>
+    {
+        exec(command, (error, stdout, stderr) =>
+        {
+            _handleError(error, stderr, reject);
+            resolve();
+        });
+    })
 }
