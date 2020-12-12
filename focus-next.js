@@ -76,7 +76,7 @@ async function getCurrentVisibleWindows()
 
 function selectFocusCandidateFilter(directionArg)
 {
-    fileLogger.writeLog(`got direction arg: <${directionArg}>`);
+    fileLogger.writeLog(`   selectFocusCandidateFilter :: got direction arg: <${directionArg}>`);
 
     switch (directionArg) {
         case 'up':
@@ -95,8 +95,9 @@ function selectFocusCandidateFilter(directionArg)
 async function tryGetNextFocusWindowId(focusCandidateFilter, currentFocusedWindow, windows)
 {
     const { candidates, tooCloseCandidates } = focusCandidateFilter(currentFocusedWindow, windows);
-    fileLogger.writeLog('candidates: ' + candidates.length);
-    fileLogger.writeLog('tooCloseCandidates: ' + tooCloseCandidates.length);
+    fileLogger.writeLog('       :: tryGetNextFocusWindowId: ')
+    fileLogger.writeLog('           candidates: ' + candidates.length);
+    fileLogger.writeLog('           tooCloseCandidates: ' + tooCloseCandidates.length);
 
     let nextWnd = null;
 
@@ -128,10 +129,10 @@ function weightedSortCandidates(candidatesList)
 
 function _focusCandidateFilter(axis, isInDirection, currentFocusedWindow, windows)
 {
-    fileLogger.writeLog('\nCandidateFilter settings:');
-    fileLogger.writeLog(`     axis:${axis}`);
-    fileLogger.writeLog(`     current focused window: [${currentFocusedWindow.name}]`);
-    fileLogger.writeLog(`     total #other windows: ${Object.keys(windows).length}\n`);
+    fileLogger.writeLog('\n       :: CandidateFilter:');
+    fileLogger.writeLog(`           axis:${axis}`);
+    fileLogger.writeLog(`           current focused window: [${currentFocusedWindow.name}]`);
+    fileLogger.writeLog(`           total #other windows: ${Object.keys(windows).length}\n`);
 
     const candidates = [];
     const tooCloseCandidates = [];
@@ -215,7 +216,7 @@ async function emergencyFocusAnyWindow(foundKeys, windows)
     }
     const emergencyId = foundKeys[0];
     fileLogger.writeLog(`focussing: [${windows[emergencyId].name}], id: ${emergencyId}`)
-    
+
     await api.focusNext(emergencyId);
     fileLogger.writeLog(`\n...finished 'focus-next.js'`);
     process.exit(0);
@@ -243,7 +244,7 @@ async function emergencyFocusAnyWindow(foundKeys, windows)
     if (!currentFocusedWin)
         await emergencyFocusAnyWindow(foundKeys, windows);
 
-    fileLogger.writeLog(`   current window: ${currentFocusedWin}, id: ${focusedId}`);
+    fileLogger.writeLog(`   current window:`);
     fileLogger.writeLog(`          Pos: (${currentFocusedWin.position.left}/${currentFocusedWin.position.top}) Name: [${currentFocusedWin.name}] Id: ${currentFocusedWin.id}`);
 
     // 2.) find id of next window to focus
