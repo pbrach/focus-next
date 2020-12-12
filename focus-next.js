@@ -23,7 +23,7 @@ async function getCurrentVisibleWindows()
         winSpec.id = ids[idx];
         winSpec.name = await api.getWindowName(winSpec.id);
         if (
-            winSpec.name === 'Desktop' 
+            winSpec.name === 'Desktop'
             // || winSpec.name === 'Peek'
         )
             continue;
@@ -74,8 +74,8 @@ async function tryGetNextFocusWindowId(focusCandidateFilter, currentFocusedWindo
     let nextWnd = null;
 
     if (candidates.length) {
-        candidates.sort((a, b) => a.dist - b.dist);
-        nextWnd = candidates[0];
+        const sortedCandidates = weightedSortCandidates(candidates);
+        nextWnd = sortedCandidates[0];
     }
     // if no normal candidates exist, check the tooClose-list
     else if (tooCloseCandidates.length)
@@ -90,6 +90,12 @@ async function tryGetNextFocusWindowId(focusCandidateFilter, currentFocusedWindo
         return null;
 
     return nextWnd.id;
+}
+
+function weightedSortCandidates(candidatesList)
+{
+    candidatesList.sort((a, b) => a.dist - b.dist);
+    return candidatesList;
 }
 
 function _focusCandidateFilter(axis, isInDirection, currentFocusedWindow, windows)
@@ -112,7 +118,8 @@ function _focusCandidateFilter(axis, isInDirection, currentFocusedWindow, window
 
         // if is tooClose, dont filter, add directly to tooClose
         // and dont add to candidates
-        if (wnd.dist <= 10) {
+        const areEual = areEqualOnAxis(axis, currentFocusedWindow.position, wnd.position)
+        if (wnd.dist <= 10 || areEual) {
             tooCloseCandidates.push(wnd);
             continue;
         }
@@ -136,6 +143,17 @@ function _focusCandidateFilter(axis, isInDirection, currentFocusedWindow, window
         candidates: candidates,
         tooCloseCandidates: tooCloseCandidates
     };
+}
+
+function areEqualOnAxis(axis, pos1, pos2)
+{
+    const tolerance = 50;
+    if (axis === 'top')
+        return Math.abs(pos1.top - pos2.top) < tolerance;
+    else if (axis === 'left')
+        return Math.abs(pos1.left - pos2.left) < tolerance;
+
+    return false;
 }
 
 function _getDistance(currentWindow, otherWindow)
