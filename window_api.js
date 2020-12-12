@@ -136,3 +136,20 @@ function activateWindow(id)
         });
     })
 }
+
+// tried this als another focusWindow-alternative,
+// in order to also get the underlying desktop actived.
+// (not a primary problem, but would be good)
+// ...however: it does not work!
+function clickWindow(id)
+{
+    const command = `xdotool click --window ${id}`;
+    return new Promise((resolve, reject) =>
+    {
+        exec(command, (error, stdout, stderr) =>
+        {
+            _handleError(error, stderr, reject);
+            resolve();
+        });
+    })
+}

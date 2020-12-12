@@ -68,3 +68,6 @@ xdotool search --onlyvisible --sync --all --name --class --classname "\S+" | xar
 xdotool search --onlyvisible --sync --all --name --class --classname "\S+" | xargs -L1 xwininfo -id
 
 xdotool search --onlyvisible --sync --all --name --class --classname "\S+" | xargs -L1 xdotool getwindowgeometry
+
+xdotool mousemove --sync 10 1378 
+xdotool click --window 92277248 1
