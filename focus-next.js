@@ -1,3 +1,5 @@
+#!/usr/bin/node
+
 const api = require('./window_api.js');
 
 var global_log = '';
@@ -164,6 +166,20 @@ function _getDistance(currentWindow, otherWindow)
     return xDiff * xDiff + yDiff * yDiff;
 }
 
+function _checkInput(directionArg)
+{
+    const acceptedArgs = ['left', 'top', 'right', 'down'];
+    if (directionArg in acceptedArgs)
+        return;
+
+    const errorString = 'Given direction argument was wrong. I got: ' + directionArg;
+    console.error(errorString);
+    global_log += '\n' + errorString;
+    console.log('The direction arg should be one of:');
+    console.log(acceptedArgs);
+    process.exit(1);
+}
+
 (async () =>
 {
     global_log += `Starting 'focus-next.js'...\n\n`;
@@ -179,6 +195,7 @@ function _getDistance(currentWindow, otherWindow)
     // 2.) find id of next window to focus
     global_log += '\n   >trying to find next window id...';
     var directionArg = process.argv[2];
+    _checkInput(directionArg);
     const focusCandidateFilter = selectFocusCandidateFilter(directionArg);
     const nextId = await tryGetNextFocusWindowId(focusCandidateFilter, currentFocusedWin, windows);
 
@@ -199,8 +216,8 @@ function writeLog()
 {
     fs = require('fs');
     global_log += '\n';
-    
-    const filePath = __dirname + '/focus_next_debug.log'; 
+
+    const filePath = __dirname + '/focus_next_debug.log';
     fs.writeFile(filePath, global_log, function (err, data)
     {
         if (err)
