@@ -155,26 +155,24 @@ function selectDirection()
 
     switch (directionArg) {
         case 'up':
-            return focusSetter.bind(null, 'top', (other, current) => other <= current);
+            return _focusCandidateFilter.bind(null, 'top', (other, current) => other <= current);
         case 'left':
-            return focusSetter.bind(null, 'left', (other, current) => other <= current);
+            return _focusCandidateFilter.bind(null, 'left', (other, current) => other <= current);
         case 'down':
-            return focusSetter.bind(null, 'top', (other, current) => other >= current);
+            return _focusCandidateFilter.bind(null, 'top', (other, current) => other >= current);
         case 'right':
-            return focusSetter.bind(null, 'left', (other, current) => other >= current);
+            return _focusCandidateFilter.bind(null, 'left', (other, current) => other >= current);
         default:
             return 'unkown direction command';
     }
 }
 
-async function focusSetter(axis, isInDirection, currentFocusedWindow, windows)
+async function focusSetter(focusCandidateFilter, currentFocusedWindow, windows)
 {
-    global_log += `\n focusSetter:: axis:${axis}, ${currentFocusedWindow.name}, windows.len: ${Object.keys(windows).length}`;
-
-    const candidateWindows = _getFocusCandidates(axis, isInDirection, currentFocusedWindow, windows)
+    const candidateWindows = focusCandidateFilter(currentFocusedWindow, windows)
     global_log += '\nSorted candidates: ' + candidateWindows.length;
 
-    // pick best candidate:
+    // pick best candidate: use 2D-distance
     candidateWindows.sort((a, b) => a.dist - b.dist);
     const nextWnd = candidateWindows[0];
 
@@ -187,8 +185,9 @@ async function focusSetter(axis, isInDirection, currentFocusedWindow, windows)
     await focusWindow(nextWnd.id);
 }
 
-function _getFocusCandidates(axis, isInDirection, currentFocusedWindow, windows)
+function _focusCandidateFilter(axis, isInDirection, currentFocusedWindow, windows)
 {
+    global_log += `\n _focusCandidateFilter:: axis:${axis}, ${currentFocusedWindow.name}, windows.len: ${Object.keys(windows).length}`;
     const candidates = [];
     for (const id in windows) {
         if (!windows.hasOwnProperty(id))
@@ -224,8 +223,8 @@ function _getFocusCandidates(axis, isInDirection, currentFocusedWindow, windows)
     const currentFocusedWin = windows[focusedId];
     delete windows[focusedId];
 
-    const _focusSetter = selectDirection();
-    _focusSetter(currentFocusedWin, windows);
+    const focusCandidateFilter = selectDirection();
+    await focusSetter(focusCandidateFilter, currentFocusedWin, windows);
 
     writeLog();
 })();
