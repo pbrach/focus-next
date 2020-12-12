@@ -14,7 +14,7 @@ class MyOwnShittyFileLogger
     {
         this.the_log += '\n' + newLogText;
 
-        this.fs.writeFileSync(this.filePath, this.the_log, function (err, data)
+        this.fs.writeFileSync(this.filePath, this.the_log + '\n', function (err, data)
         {
             // its futile... anyways
             if (err)
