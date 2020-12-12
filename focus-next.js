@@ -1,8 +1,28 @@
 #!/usr/bin/node
 
-const api = require('./window_api.js');
+// cause I currently have no clue how to do this properly in nodejs
+class MyOwnShittyFileLogger
+{
+    constructor()
+    {
+        this.the_log = '';
+        this.fs = require('fs');
+        this.filePath = __dirname + '/debug.log';
+    }
 
-var global_log = '';
+    writeLog = function (newLogText)
+    {
+        this.the_log += '\n' + newLogText;
+
+        this.fs.writeFile(this.filePath, this.the_log, function (err, data)
+        {
+            // its futile... anyways
+            if (err)
+                return console.log(err);
+        });
+    }.bind(this); // make sure we can handle that function to anyone over
+}
+var fileLogger = new MyOwnShittyFileLogger();
 
 class WindowSpec
 {
@@ -14,6 +34,9 @@ class WindowSpec
         this.dimension = { width: 0, height: 0 };
     }
 }
+
+
+const api = require('./window_api.js');
 
 async function getCurrentVisibleWindows()
 {
@@ -43,7 +66,7 @@ async function getCurrentVisibleWindows()
             continue;
 
         const posString = `(${geom.position.left}/${geom.position.top})`;
-        global_log += `\n           Pos: ${posString}${' '.repeat(11 - posString.length)} Name: [${winSpec.name.slice(-30)}] Id: ${winSpec.id}`;
+        fileLogger.writeLog(`          Pos: ${posString}${' '.repeat(11 - posString.length)} Name: [${winSpec.name.slice(-30)}] Id: ${winSpec.id}`);
 
         windows[winSpec.id] = winSpec;
     }
@@ -53,7 +76,7 @@ async function getCurrentVisibleWindows()
 
 function selectFocusCandidateFilter(directionArg)
 {
-    global_log += `\ngot direction arg: <${directionArg}>`;
+    fileLogger.writeLog(`got direction arg: <${directionArg}>`);
 
     switch (directionArg) {
         case 'up':
@@ -72,8 +95,8 @@ function selectFocusCandidateFilter(directionArg)
 async function tryGetNextFocusWindowId(focusCandidateFilter, currentFocusedWindow, windows)
 {
     const { candidates, tooCloseCandidates } = focusCandidateFilter(currentFocusedWindow, windows);
-    global_log += '\ncandidates: ' + candidates.length;
-    global_log += '\ntooCloseCandidates: ' + tooCloseCandidates.length;
+    fileLogger.writeLog('candidates: ' + candidates.length);
+    fileLogger.writeLog('tooCloseCandidates: ' + tooCloseCandidates.length);
 
     let nextWnd = null;
 
@@ -105,10 +128,10 @@ function weightedSortCandidates(candidatesList)
 
 function _focusCandidateFilter(axis, isInDirection, currentFocusedWindow, windows)
 {
-    global_log += '\n   _focusCandidateFilter:';
-    global_log += `\n     axis:${axis}`;
-    global_log += `\n     current focused window: [${currentFocusedWindow.name}]`;
-    global_log += `\n     total #other windows: ${Object.keys(windows).length}\n`;
+    fileLogger.writeLog('\nCandidateFilter settings:');
+    fileLogger.writeLog(`     axis:${axis}`);
+    fileLogger.writeLog(`     current focused window: [${currentFocusedWindow.name}]`);
+    fileLogger.writeLog(`     total #other windows: ${Object.keys(windows).length}\n`);
 
     const candidates = [];
     const tooCloseCandidates = [];
@@ -177,55 +200,55 @@ function _checkInput(directionArg)
 
     const errorString = 'Given direction argument was wrong. I got: ' + directionArg;
     console.error(errorString);
-    global_log += '\n' + errorString;
+    fileLogger.writeLog('\n' + errorString);
     console.log('The direction arg should be one of:');
     console.log(acceptedArgs);
     process.exit(1);
 }
 
+
+
+/**
+ * Glorious main method/entry-point
+ */
 (async () =>
 {
-    global_log += `Starting 'focus-next.js'...\n\n`;
+    fileLogger.writeLog(`Starting 'focus-next.js'...\n\n`);
 
     // 1.) get state: all currently visible windos and their positions
-    global_log += '\n   >trying to get all windows...';
+    fileLogger.writeLog(`1:: trying to get all windows...`);
     const windows = await getCurrentVisibleWindows();
 
-    const focusedId = await api.getCurrentFocusedWindowId();
+    const focusedId = await tryAndSimplyLogErrorsAway(api.getCurrentFocusedWindowId);
     const currentFocusedWin = windows[focusedId];
     delete windows[focusedId];
 
     // 2.) find id of next window to focus
-    global_log += '\n   >trying to find next window id...';
+    fileLogger.writeLog(`\n\n2 :: trying to find next window id...`);
     var directionArg = process.argv[2];
     _checkInput(directionArg);
     const focusCandidateFilter = selectFocusCandidateFilter(directionArg);
     const nextId = await tryGetNextFocusWindowId(focusCandidateFilter, currentFocusedWin, windows);
 
-    // 3.) focus the found 'next'
-    global_log += '\n   >trying to focus find next window id...';
+    fileLogger.writeLog('\n\n3 :: trying to focus find next window id...');
     if (nextId) {
-        global_log += `\n focussing: [${windows[nextId].name}]`;
+        fileLogger.writeLog(`focussing: [${windows[nextId].name}]`);
         await api.focusNext(nextId);
     }
     else
-        global_log += '\n!!! Found no window to focus!';
+        fileLogger.writeLog('!!! Found no window to focus!');
 
-    global_log += `\n\n...finished 'focus-next.js'`;
-    // writeLog();
+    fileLogger.writeLog(`\n...finished 'focus-next.js'`);
 })();
 
-function writeLog()
+async function tryAndSimplyLogErrorsAway(asyncFunc)
 {
-    fs = require('fs');
-    global_log += '\n';
-
-    const filePath = __dirname + '/focus_next_debug.log';
-    fs.writeFile(filePath, global_log, function (err, data)
-    {
-        if (err)
-            return console.log(err);
-
-        console.log(global_log);
-    });
+    let result = null;
+    try {
+        result = await asyncFunc();
+    } catch (err) {
+        fileLogger.writeLog(err);
+        return null;
+    }
+    return result;
 }
