@@ -192,14 +192,16 @@ function _getDistance(currentWindow, otherWindow)
         global_log += '\n!!! Found no window to focus!';
 
     global_log += `\n\n...finished 'focus-next.js'`;
-    // writeLog();
+    writeLog();
 })();
 
 function writeLog()
 {
     fs = require('fs');
     global_log += '\n';
-    fs.writeFile('focus_next_log.out', global_log, function (err, data)
+    
+    const filePath = __dirname + '/focus_next_debug.log'; 
+    fs.writeFile(filePath, global_log, function (err, data)
     {
         if (err)
             return console.log(err);
