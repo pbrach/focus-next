@@ -1,7 +1,7 @@
 #!/usr/bin/node
 
 // cause I currently have no clue how to do this properly in nodejs
-class MyOwnShittyFileLogger
+class SimpleFileLogger
 {
     constructor()
     {
@@ -25,7 +25,7 @@ class MyOwnShittyFileLogger
         });
     }.bind(this); // make sure we can handle that function to anyone over
 }
-var fileLogger = new MyOwnShittyFileLogger();
+var fileLogger = new SimpleFileLogger();
 
 class WindowSpec
 {
@@ -239,7 +239,7 @@ async function emergencyFocusAnyWindow(foundKeys, windows)
     fileLogger.writeLog(`1:: trying to get all windows...`);
     const windows = await getCurrentVisibleWindows();
 
-    const focusedId = await tryAndSimplyLogErrorsAway(api.getCurrentFocusedWindowId);
+    const focusedId = await tryAndLogErrorsAway(api.getCurrentFocusedWindowId);
     const currentFocusedWin = windows[focusedId];
     delete windows[focusedId];
 
@@ -266,7 +266,7 @@ async function emergencyFocusAnyWindow(foundKeys, windows)
     fileLogger.writeLog(`\n...finished 'focus-next.js'`);
 })();
 
-async function tryAndSimplyLogErrorsAway(asyncFunc)
+async function tryAndLogErrorsAway(asyncFunc)
 {
     let result = null;
     try {

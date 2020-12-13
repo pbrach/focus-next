@@ -11,10 +11,10 @@ function _handleError(error, stderr, rejectCallback)
 
 exports.getCurrentWindowIds = function ()
 {
+    const command = 'xdotool search --onlyvisible --sync --all --name --class --classname "\\S+"';
     return new Promise((resolve, reject) =>
     {
-        exec('xdotool search --onlyvisible --sync --all --name --class --classname "\\S+"',
-            (error, stdout, stderr) =>
+        exec(command, (error, stdout, stderr) =>
             {
                 _handleError(error, stderr, reject);
 
