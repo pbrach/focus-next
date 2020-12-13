@@ -5,6 +5,7 @@ class MyOwnShittyFileLogger
 {
     constructor()
     {
+        this.isEnabled = process.env.DEBUG_FOCUS_NEXT == 1;
         this.the_log = '';
         this.fs = require('fs');
         this.filePath = __dirname + '/debug.log';
@@ -12,6 +13,8 @@ class MyOwnShittyFileLogger
 
     writeLog = function (newLogText)
     {
+        if (!this.isEnabled)
+            return;
         this.the_log += '\n' + newLogText;
 
         this.fs.writeFileSync(this.filePath, this.the_log + '\n', function (err, data)
