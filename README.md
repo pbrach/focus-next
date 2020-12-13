@@ -11,17 +11,20 @@ Where DIRECTION is one of:
 * right
 * down
 
-Future:  
-* stack (switch between a stack of overlappiing windows nearby)
-* raizeall (raise all minimized windows, somehow this is not natively possible in my distro)
-
 (mind the lower case!)
 
+Future:
+* stack (switch between a stack of overlappiing windows nearby)
+* raiseall (raise all minimized windows, somehow this is not natively possible in my distro)
+
+
+
 # idea
-Instead of the shitty `Alt + Tab` way of cycling through a sequential list 
+Instead of the annoying `Alt + Tab` way of cycling through a sequential list 
 that depicts all open windows, I rather want to have a shortcut that 
-lets me focus a
-specific windows that I see on my current screen. So the big idea here is:  
+allows me to interact with the windows I actually see on my screen. 
+
+So the big idea is:  
 
 > Manage and focus windows you actually see.  
 
