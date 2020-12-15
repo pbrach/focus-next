@@ -1,11 +1,26 @@
 #!/usr/bin/node
 
+/**
+ * @typedef {import('./common.js').Dimension} Dimension
+ * @typedef {import('./common.js').Position} Position
+ * @typedef {import('./common.js').WindowGeometry} WindowGeometry
+ */
+
+const api = require('./window_api.js');
+const { WindowSpec } = require('./common.js');
+
+//GLOBAL SETTINGS:
+const settings = {
+    ENABLE_DEBUG: process.env.FOCUSNEXT_DEBUGLOG == 1, // create a logfile in same dir where focus-next.js is (default: 0)
+    USE_UPPER_LEFT: process.env.FOCUSNEXT_UPPERLEFT == 1 // use upper left point as window coord (default: center point)
+};
+
 // cause I currently have no clue how to do this properly in nodejs
 class SimpleFileLogger
 {
     constructor()
     {
-        this.isEnabled = process.env.DEBUG_FOCUS_NEXT == 1;
+        this.isEnabled = settings.ENABLE_DEBUG;
         this.the_log = '';
         this.fs = require('fs');
         this.filePath = __dirname + '/debug.log';
@@ -27,19 +42,6 @@ class SimpleFileLogger
 }
 var fileLogger = new SimpleFileLogger();
 
-class WindowSpec
-{
-    constructor()
-    {
-        this.id = "";
-        this.name = "";
-        this.position = { left: 0, top: 0 };
-        this.dimension = { width: 0, height: 0 };
-    }
-}
-
-
-const api = require('./window_api.js');
 
 async function getCurrentVisibleWindows()
 {
