@@ -59,8 +59,8 @@ async function getCurrentVisibleWindows()
             continue;
 
         const geom = await api.getWindowGeometry(winSpec.id);
-        winSpec.position = geom.position;
         winSpec.dimension = geom.dimension;
+        winSpec.position = createPosition(geom.position, geom.dimension);
 
         const isTooSmallForRealWindow = winSpec.dimension.width * winSpec.dimension.height < 5;
         if (isTooSmallForRealWindow)
@@ -77,6 +77,23 @@ async function getCurrentVisibleWindows()
     }
 
     return windows;
+}
+
+
+/**
+ * @param {Position} upperLeftPosition
+ * @param {Dimension} dimension
+ * @returns {Position}
+ */
+function createPosition(upperLeftPosition, dimension)
+{
+    if (settings.USE_UPPER_LEFT)
+        return upperLeftPosition;
+
+    return {
+        left: upperLeftPosition.left + dimension.width / 2,
+        top: upperLeftPosition.top + dimension.height / 2
+    }
 }
 
 function selectFocusCandidateFilter(directionArg)
@@ -232,6 +249,7 @@ async function emergencyFocusAnyWindow(foundKeys, windows)
  */
 (async () =>
 {
+    fileLogger.writeLog(`${new Date(Date.now()).toUTCString()}`);
     fileLogger.writeLog(`Starting 'focus-next.js'...\n\n`);
 
     var directionArg = process.argv[2];
