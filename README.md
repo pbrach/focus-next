@@ -40,14 +40,36 @@ the next window. The guiding principles for this are:
 * It must **feel intuitive**
 * Is based on **what you actually see**
 
-So currently I decided on the following assumptions:
-* Always filter potential focus candidate windows by the direction given by the user.
-Only allow focus on the filtered windows. So the command `focus-next left` 
-will never allow to select a window to the right of the current focused window, 
-even if there is no window on the left side of it.
-* Prioritize to focus windows that are positioned along the focus direction. So even
-if a window is closer and in the correct direction, it should not be selected if 
-there is a more distanced window that is reachable with a lower deviation in angle.
+These principles are implemented by the following...
+
+### directives:
+
+**filter**  
+Always filter potential focus candidate windows by the direction given by the user (via arrow keys or other shortcuts) and sort out all windows that are in a direction that is more than ±90° away. So the command `focus-next right` 
+will never select a window to the left of the current focused window, 
+even if there is no other window on the right side.
+
+An addition filter is:
+* If a window is minimized: don't focus (or even raise) it, because it was intentionally hidden by the user.
+
+**proximity**  
+The user defines the focus in relation to the current window where probably also his/her current focus sits. So all candidate windows for the next focus are sorted by their distance to the current focused window.
+
+**weighting**  
+Prioritize to focus windows that are positioned along the focus direction to honor the users wish for setting a focus in that direction. 
+So even if a window is close and almost in the correct direction (e.g.: between ±45-90°), it should not be selected, if 
+there is a more distanced but also more fitting window for the given direction (like the range ±0-30°).
+
+For this reason we simply give a higher weight to candidate windows that are closer to the direction that the user defined. If a candidate windows center point can be reached by 0° deviation from the direction the user specified, it gets a weight of 16. Starting by 45° there is a penalty given (see the weight distribution below).
+
+![Weights for different deviation angles](doc/direction_weights.png)
+
+x-axis shows the deviation in degree (of a potential focus candidate)  
+y-axis show the given weight  
+after 45 degree we actually go below 1 and thus imply a negative weight (or penalty)
+
+
+**weighting problem**  
 ```
 X----                     X---- 
 | A |                     | C |
@@ -74,8 +96,8 @@ arrows in a combination... so focus-next needs to handle these scenarios: if
 within 300 msec a second call to focus-next in a different direction is 
 triggered, the diagonal mode is started and the first call removed.
 
-* If a window is minimized: don't allow to raise and focus it
-* If a window can't be seen (behind other windows) make it possible to focus,
+**overlapping windows**  
+If a window can't be seen (behind other windows) make it possible to focus,
 but with last priority to other windows, because the user probably wants to 
 select something else that he/she can actually see.
 * The previous point might introduce problems if a user actually wants to be
