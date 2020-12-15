@@ -107,14 +107,15 @@ stack of windows with a distinct command.
 
 
 # 'installation'
-Dependencies are
-* xdotool
-* x11-utils (or only: xwininfo)
-* nodejs (current stable)
+Package dependencies are (on ubuntu 20)
+* **xdotool**
+* **x11-utils** (or only: xwininfo), on fedore this package is called: `xorg-x11-utils`
+* **nodejs** (tested with version 14, but lower versions might work as well)
 
 Simply bind global shortcuts commands like this:
 > Meta + Alt + LeftArrow => `node /path/to/focus-next.js left`  
 > Meta + Alt + RightArrow => `node /path/to/focus-next.js right`  
+
 
 
 # outlook
