@@ -114,9 +114,25 @@ function selectFocusCandidateFilter(directionArg)
     }
 }
 
-async function tryGetNextFocusWindowId(focusCandidateFilter, currentFocusedWindow, windows)
+function getDirectionVector(directionArg)
 {
-    const { candidates, tooCloseCandidates } = focusCandidateFilter(currentFocusedWindow, windows);
+    switch (directionArg) {
+        case 'up':
+            return { left: 0, top: -1 };
+        case 'left':
+            return { left: -1, top: 0 };
+        case 'down':
+            return { left: 0, top: 1 };
+        case 'right':
+            return { left: 1, top: 0 };;
+        default:
+            throw `Invalid directionArg: ${directionArg}`;
+    }
+}
+
+async function tryGetNextFocusWindowId(directionArg, currentFocusedWindow, windows)
+{
+    const { candidates, tooCloseCandidates } = selectFocusCandidateFilter(directionArg)(currentFocusedWindow, windows);
     fileLogger.writeLog('       :: tryGetNextFocusWindowId: ')
     fileLogger.writeLog('           candidates: ' + candidates.length);
     fileLogger.writeLog('           tooCloseCandidates: ' + tooCloseCandidates.length);
@@ -124,7 +140,8 @@ async function tryGetNextFocusWindowId(focusCandidateFilter, currentFocusedWindo
     let nextWnd = null;
 
     if (candidates.length) {
-        const sortedCandidates = weightedSortCandidates(candidates);
+        const directionVector = getDirectionVector(directionArg);
+        const sortedCandidates = weightedSortCandidates(directionVector, candidates, currentFocusedWindow);
         nextWnd = sortedCandidates[0];
     }
     // if no normal candidates exist, check the tooClose-list
@@ -143,10 +160,40 @@ async function tryGetNextFocusWindowId(focusCandidateFilter, currentFocusedWindo
     return nextWnd.id;
 }
 
-function weightedSortCandidates(candidatesList)
+/**
+ * @param {{left:number, top:number}} directionVector
+ * @param {WindowSpec[]} candidatesList 
+ * @param {WindowSpec} currentWindow 
+ * @returns {WindowSpec[]}
+ */
+function weightedSortCandidates(directionVector, candidatesList, currentWindow)
 {
-    candidatesList.sort((a, b) => a.dist - b.dist);
-    return candidatesList;
+    const uv = directionVector; //shorter, for 'unit vector'
+
+    const result = candidatesList
+        .map(weightDistances)
+        .sort((a, b) => a.dist - b.dist);
+    return result;
+
+    /**
+     * @param {WindowSpec} window
+     * @returns {WindowSpec}
+     */
+    function weightDistances(window)
+    {
+        // get direction from current window to candidate-window
+        const dir = {
+            left: window.position.left - currentWindow.position.left,
+            top: window.position.top - currentWindow.position.top
+        };
+        
+        const base = (uv.left * dir.left + uv.top * dir.top) / (Math.abs(dir.left) + Math.abs(dir.top)) * 2;
+        if (base <= 0)
+            throw 'calculation went wrong!';
+        const scalingFactor = base * base * base * base; // multiplications might be faster than using power-to
+        window.dist = window.dist / scalingFactor; // favors positions that are within +/- 20 degree of direction vector
+        return window;
+    }
 }
 
 function _focusCandidateFilter(axis, isInDirection, currentFocusedWindow, windows)
@@ -272,8 +319,7 @@ async function emergencyFocusAnyWindow(foundKeys, windows)
 
     // 2.) find id of next window to focus
     fileLogger.writeLog(`\n\n2 :: trying to find next window id...`);
-    const focusCandidateFilter = selectFocusCandidateFilter(directionArg);
-    const nextId = await tryGetNextFocusWindowId(focusCandidateFilter, currentFocusedWin, windows);
+    const nextId = await tryGetNextFocusWindowId(directionArg, currentFocusedWin, windows);
 
     fileLogger.writeLog('\n\n3 :: trying to focus find next window id...');
     if (nextId) {

@@ -30,6 +30,7 @@ class WindowSpec
     {
         this.id = "";
         this.name = "";
+        this.dist = 0.0;
 
         /**@type {Position} */
         this.position = { left: 0, top: 0 };
