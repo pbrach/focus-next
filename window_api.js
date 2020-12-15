@@ -1,5 +1,11 @@
 const { exec } = require('child_process');
 
+/**
+ * @typedef {import('./common.js').Dimension} Dimension
+ * @typedef {import('./common.js').Position} Position
+ * @typedef {import('./common.js').WindowGeometry} WindowGeometry
+ */
+
 function _handleError(error, stderr, rejectCallback)
 {
     if (error || stderr) {
@@ -53,6 +59,10 @@ exports.getCurrentFocusedWindowId = function ()
 }
 
 const geometry_regexp = /^Window\s.*\n\s\sPosition:\s(.*),(.*)\s\(.*\n\s\sGeometry:\s(.*)x(.*)/m;
+/**
+ * @param {number} id 
+ * @returns {WindowGeometry}
+ */
 exports.getWindowGeometry = function (id)
 {
     const command = `xdotool getwindowgeometry ${id}`;
