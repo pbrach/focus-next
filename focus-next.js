@@ -96,19 +96,32 @@ function createPosition(upperLeftPosition, dimension)
     }
 }
 
+// are coords in direction...:
+const in_up = (other, current) => other.top <= current.top;
+const in_left = (other, current) => other.left <= current.left;
+const in_down = (other, current) => other.top >= current.top;
+const in_right = (other, current) => other.left >= current.left;
 function selectFocusCandidateFilter(directionArg)
 {
-    fileLogger.writeLog(`   selectFocusCandidateFilter :: got direction arg: <${directionArg}>`);
+    fileLogger.writeLog(`   selectFocusCandidateFilter :: got direction arg:   < ${directionArg} >`);
 
     switch (directionArg) {
         case 'up':
-            return _focusCandidateFilter.bind(null, 'top', (other, current) => other <= current);
+            return _focusCandidateFilter.bind(null, in_up);
         case 'left':
-            return _focusCandidateFilter.bind(null, 'left', (other, current) => other <= current);
+            return _focusCandidateFilter.bind(null, in_left);
         case 'down':
-            return _focusCandidateFilter.bind(null, 'top', (other, current) => other >= current);
+            return _focusCandidateFilter.bind(null, in_down);
         case 'right':
-            return _focusCandidateFilter.bind(null, 'left', (other, current) => other >= current);
+            return _focusCandidateFilter.bind(null, in_right);
+        case 'right-down':
+            return _focusCandidateFilter.bind(null, (o, c) => in_right(o, c) && in_down(o, c));
+        case 'left-down':
+            return _focusCandidateFilter.bind(null, (o, c) => in_left(o, c) && in_down(o, c));
+        case 'right-up':
+            return _focusCandidateFilter.bind(null, (o, c) => in_right(o, c) && in_up(o, c));
+        case 'left-up':
+            return _focusCandidateFilter.bind(null, (o, c) => in_left(o, c) && in_up(o, c));
         default:
             return 'unkown direction command';
     }
@@ -124,7 +137,17 @@ function getDirectionVector(directionArg)
         case 'down':
             return { left: 0, top: 1 };
         case 'right':
-            return { left: 1, top: 0 };;
+            return { left: 1, top: 0 };
+        // using the length of '0.707106' gives a unit vector of 45 degree again
+        // so we can simplify the calculation
+        case 'right-down':
+            return { left: 0.707106, top: 0.707106 };
+        case 'left-down':
+            return { left: -0.707106, top: 0.707106 };
+        case 'right-up':
+            return { left: 0.707106, top: -0.707106 };
+        case 'left-up':
+            return { left: -0.707106, top: -0.707106 };
         default:
             throw `Invalid directionArg: ${directionArg}`;
     }
@@ -186,20 +209,33 @@ function weightedSortCandidates(directionVector, candidatesList, currentWindow)
             left: window.position.left - currentWindow.position.left,
             top: window.position.top - currentWindow.position.top
         };
-        
-        const base = (uv.left * dir.left + uv.top * dir.top) / (Math.abs(dir.left) + Math.abs(dir.top)) * 2;
-        if (base <= 0)
-            throw 'calculation went wrong!';
-        const scalingFactor = base * base * base * base; // multiplications might be faster than using power-to
+
+        if (dir.left + dir.top === 0)
+            throw 'Dir vector is 0, should not happen: should have been pre filtered out into tooCloseCandidates';
+
+        const denominatior = uv.left * dir.left + uv.top * dir.top;
+
+        base = 0.1;
+        if (denominatior !== 0)
+            base = denominatior / Math.sqrt(dir.left ** 2 + dir.top ** 2);
+
+        if (base < 0)
+            throw 'calculation went wrong! got a negative base for the scalingFactor.';
+
+        const scalingFactor = base ** 16;
         window.dist = window.dist / scalingFactor; // favors positions that are within +/- 20 degree of direction vector
         return window;
     }
+
+    function vectorLen(vec)
+    {
+        return;
+    }
 }
 
-function _focusCandidateFilter(axis, isInDirection, currentFocusedWindow, windows)
+function _focusCandidateFilter(isInDirection, currentFocusedWindow, windows)
 {
     fileLogger.writeLog('\n       :: CandidateFilter:');
-    fileLogger.writeLog(`           axis:${axis}`);
     fileLogger.writeLog(`           current focused window: [${currentFocusedWindow.name}]`);
     fileLogger.writeLog(`           total #other windows: ${Object.keys(windows).length}\n`);
 
@@ -210,29 +246,17 @@ function _focusCandidateFilter(axis, isInDirection, currentFocusedWindow, window
             continue;
 
         const wnd = windows[id];
-        let dimOther = 0;
-        let dimCurrent = 0;
         wnd.dist = _getDistance(currentFocusedWindow, wnd);
 
-        // if is tooClose, dont filter, add directly to tooClose
+        // if is tooClose, don't filter, add directly to tooClose
         // and dont add to candidates
-        const areEual = areEqualOnAxis(axis, currentFocusedWindow.position, wnd.position)
-        if (wnd.dist <= 10 || areEual) {
+        if (wnd.dist <= 20) {
             tooCloseCandidates.push(wnd);
             continue;
         }
 
         // filter candidate:
-        if (axis === 'top') {
-            dimOther = wnd.position.top;
-            dimCurrent = currentFocusedWindow.position.top;
-        }
-        else if (axis === 'left') {
-            dimOther = wnd.position.left;
-            dimCurrent = currentFocusedWindow.position.left;
-        }
-
-        if (!isInDirection(dimOther, dimCurrent))
+        if (!isInDirection(wnd.position, currentFocusedWindow.position))
             continue;
 
         candidates.push(wnd);
@@ -241,17 +265,6 @@ function _focusCandidateFilter(axis, isInDirection, currentFocusedWindow, window
         candidates: candidates,
         tooCloseCandidates: tooCloseCandidates
     };
-}
-
-function areEqualOnAxis(axis, pos1, pos2)
-{
-    const tolerance = 50;
-    if (axis === 'top')
-        return Math.abs(pos1.top - pos2.top) < tolerance;
-    else if (axis === 'left')
-        return Math.abs(pos1.left - pos2.left) < tolerance;
-
-    return false;
 }
 
 function _getDistance(currentWindow, otherWindow)
@@ -264,7 +277,7 @@ function _getDistance(currentWindow, otherWindow)
 
 function _checkInput(directionArg)
 {
-    const acceptedArgs = ['left', 'up', 'right', 'down'];
+    const acceptedArgs = ['left', 'up', 'right', 'down', 'left-up', 'left-down', 'right-up', 'right-down'];
     if (acceptedArgs.includes(directionArg))
         return;
 
@@ -321,7 +334,7 @@ async function emergencyFocusAnyWindow(foundKeys, windows)
     fileLogger.writeLog(`\n\n2 :: trying to find next window id...`);
     const nextId = await tryGetNextFocusWindowId(directionArg, currentFocusedWin, windows);
 
-    fileLogger.writeLog('\n\n3 :: trying to focus find next window id...');
+    fileLogger.writeLog('\n\n3 :: trying to focus the window with id...');
     if (nextId) {
         fileLogger.writeLog(`focussing: [${windows[nextId].name}]`);
         await api.focusNext(nextId);
