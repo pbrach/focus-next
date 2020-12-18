@@ -1,5 +1,7 @@
 #!/usr/bin/node
 
+const fs = require('fs');
+
 /**
  * @typedef {import('./common.js').Dimension} Dimension
  * @typedef {import('./common.js').Position} Position
@@ -27,7 +29,6 @@ const rundirIsRequired =
 if (rundirIsRequired)
     createRundirIfNotExit();
 
-const fs = require('fs');
 function createRundirIfNotExit()
 {
     const runDataDirPath = `${__dirname}/${settings.RUN_DIR_NAME}`;
