@@ -22,7 +22,8 @@ const settings = {
     APP_NAME: 'focus-next',
     getStateFilePath: () => `${__dirname}/${settings.RUN_DIR_NAME}/${settings.STATE_FILE_NAME}`,
     DIRECTIONS: ['left', 'up', 'right', 'down'],
-    DIAGONAL_DIRECTIONS: ['left-up', 'left-down', 'right-up', 'right-down']
+    DIAGONAL_DIRECTIONS: ['left-up', 'left-down', 'right-up', 'right-down'],
+    DIAGONAL_DELAY: 300,
 };
 
 const rundirIsRequired =
@@ -380,15 +381,16 @@ function _checkInput(directionArg)
 /**
  * 2nd Level main method: handles processing of individual
  * user commands
+ * @param {{focusedId: string, directionArg: string}} userInput
  */
-async function handleUserInput(focusedId, directionArg)
+async function processUserInput(userInput)
 {
     // 1.) get state: all currently visible windos and their positions
     fileLogger.writeLog(`1:: trying to get all windows...`);
     const windows = await getCurrentVisibleWindows();
 
-    const currentFocusedWin = windows[focusedId];
-    delete windows[focusedId];
+    const currentFocusedWin = windows[userInput.focusedId];
+    delete windows[userInput.focusedId];
 
     const foundKeys = Object.keys(windows);
     if (!currentFocusedWin)
@@ -399,7 +401,7 @@ async function handleUserInput(focusedId, directionArg)
 
     // 2.) find id of next window to focus
     fileLogger.writeLog(`\n\n2 :: trying to find next window id...`);
-    const nextId = await tryGetNextFocusWindowId(directionArg, currentFocusedWin, windows);
+    const nextId = await tryGetNextFocusWindowId(userInput.directionArg, currentFocusedWin, windows);
 
     fileLogger.writeLog('\n\n3 :: trying to focus the window with id...');
     if (nextId) {
@@ -412,50 +414,41 @@ async function handleUserInput(focusedId, directionArg)
 }
 
 /**
- * Main entry-point
- */
-(async () =>
+ * @param {{focusedId: string, directionArg: string}} userInput
+ * @returns {boolean} 
+ * */
+function tryDiagonalCombination(userInput)
 {
-    const minTimeHandle = delay(300);
+    if (settings.DIAGONAL_DIRECTIONS.includes(userInput.directionArg) || !userInput.focusedId)
+        return false;
 
-    fileLogger.writeLog(`${new Date(Date.now()).toUTCString()}`);
-    fileLogger.writeLog(`Starting 'focus-next.js'...\n\n`);
+    const stateFilePath = settings.getStateFilePath();
+    const previousAppState = AppState.loadFrom(stateFilePath);
 
-    let directionArg = process.argv[2];
-    _checkInput(directionArg);
-    let focusedId = await tryAndLogErrorsAway(api.getCurrentFocusedWindowId);
-    let needRemoveAppState = false;
-    if (settings.USE_DIAGONAL_COMBINATION && !settings.DIAGONAL_DIRECTIONS.includes(directionArg)) {
-        const stateFilePath = settings.getStateFilePath();
-        const previousAppState = AppState.loadFrom(stateFilePath);
+    if (!previousAppState) {
+        const currentState = new AppState(
+            process.pid.toString(),
+            userInput.focusedId,
+            userInput.directionArg);
+        currentState.saveTo(stateFilePath);
 
-        if (previousAppState) {
-            const newdirectionArg = mergeDirections(previousAppState.directionArg, directionArg);
-
-            if (newdirectionArg) {
-                directionArg = newdirectionArg;
-                try { process.kill(previousAppState.processId); } catch { }
-                fs.rmSync(stateFilePath);
-                focusedId = previousAppState.startWindowId;
-            }
-        }
-        else {
-            const currentState = new AppState(process.pid.toString(), focusedId, directionArg);
-            currentState.saveTo(stateFilePath);
-            needRemoveAppState = true;
-        }
-
+        return true;
     }
-    await handleUserInput(focusedId, directionArg);
-    if (needRemoveAppState)
-        fs.rmSync(settings.getStateFilePath());
 
-    //make sure to keep the command open till the delay is over
-    await minTimeHandle;
-    fileLogger.writeLog(`\n...finished 'focus-next.js'`);
-})();
+    const newdirectionArg = mergeDirections(previousAppState.directionArg, userInput.directionArg);
 
+    if (newdirectionArg) {
+        try { process.kill(previousAppState.processId); } catch { }
+        fs.rmSync(stateFilePath);
 
+        userInput.focusedId = previousAppState.startWindowId;
+        userInput.directionArg = newdirectionArg;
+
+        return false;
+    }
+
+    return false;
+}
 
 const horizontalDirs = ['left', 'right'];
 const verticalDirs = ['up', 'down'];
@@ -484,3 +477,41 @@ async function tryAndLogErrorsAway(asyncFunc)
     }
     return result;
 }
+
+/**@returns {{focusedId: string, directionArg: string}} */
+async function getUserInput()
+{
+    let directionArg = process.argv[2];
+    _checkInput(directionArg);
+    let focusedId = await tryAndLogErrorsAway(api.getCurrentFocusedWindowId);
+
+    return { focusedId, directionArg };
+}
+
+/**
+ * Main entry-point
+ */
+(async () =>
+{
+    const waitHandle = delay(settings.DIAGONAL_DELAY);
+
+    fileLogger.writeLog(`${new Date(Date.now()).toUTCString()}`);
+    fileLogger.writeLog(`Starting 'focus-next.js'...\n\n`);
+
+    let userInput = await getUserInput();
+
+    let waitForPossibleDiagonalCombination = false;
+    if (settings.USE_DIAGONAL_COMBINATION)
+        waitForPossibleDiagonalCombination = tryDiagonalCombination(userInput);
+
+    await processUserInput(userInput);
+
+    //make sure to keep the command open till the delay is over
+    if (waitForPossibleDiagonalCombination) {
+        await waitHandle;
+        fs.rmSync(settings.getStateFilePath());
+    }
+
+    fileLogger.writeLog(`\n...finished 'focus-next.js'`);
+})();
+
