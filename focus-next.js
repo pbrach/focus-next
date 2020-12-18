@@ -20,7 +20,11 @@ const settings = {
     APP_NAME: 'focus-next',
 };
 
-if (settings.USE_DIAGONAL_COMBINATION)
+const rundirIsRequired =
+    settings.USE_DIAGONAL_COMBINATION ||
+    settings.ENABLE_DEBUG;
+
+if (rundirIsRequired)
     createRundirIfNotExit();
 
 const fs = require('fs');
@@ -28,17 +32,18 @@ function createRundirIfNotExit()
 {
     const runDataDirPath = `${__dirname}/${settings.RUN_DIR_NAME}`;
 
-    if (!fs.existsSync(runDataDirPath)) {
-        try {
-            fs.mkdirSync(runDataDirPath)
-        }
-        catch (errorMsg) {
-            console.error(`${settings.APP_NAME} was asked to write files to a rundata directory:`);
-            console.error(`${runDataDirPath}`);
-            console.error(`but that was not possible. Got error:`);
-            console.error(errorMsg);
-            process.exit(1);
-        }
+    if (fs.existsSync(runDataDirPath))
+        return;
+        
+    try {
+        fs.mkdirSync(runDataDirPath)
+    }
+    catch (errorMsg) {
+        console.error(`${settings.APP_NAME} was asked to write files to a rundata directory:`);
+        console.error(`${runDataDirPath}`);
+        console.error(`but that was not possible. Got error:`);
+        console.error(errorMsg);
+        process.exit(1);
     }
 }
 
@@ -51,10 +56,6 @@ class SimpleFileLogger
         this.the_log = '';
         this.fs = fs;
         this.filePath = `${__dirname}/${settings.RUN_DIR_NAME}/${settings.DEBUG_LOG_NAME}`;
-
-        if (this.isEnabled) {
-            createRundirIfNotExit();
-        }
     }
 
     writeLog = function (newLogText)
