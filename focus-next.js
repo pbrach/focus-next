@@ -20,6 +20,9 @@ const settings = {
     STATE_FILE_NAME: 'state.json',
     DEBUG_LOG_NAME: 'debug.log',
     APP_NAME: 'focus-next',
+    getStateFilePath: () => `${__dirname}/${settings.RUN_DIR_NAME}/${settings.STATE_FILE_NAME}`,
+    DIRECTIONS: ['left', 'up', 'right', 'down'],
+    DIAGONAL_DIRECTIONS: ['left-up', 'left-down', 'right-up', 'right-down']
 };
 
 const rundirIsRequired =
@@ -35,7 +38,7 @@ function createRundirIfNotExit()
 
     if (fs.existsSync(runDataDirPath))
         return;
-        
+
     try {
         fs.mkdirSync(runDataDirPath)
     }
@@ -76,6 +79,35 @@ class SimpleFileLogger
 }
 var fileLogger = new SimpleFileLogger();
 
+class AppState
+{
+    constructor(processId = null, startWindowId = null, directionArg = null)
+    {
+        this.processId = processId;
+        this.startWindowId = startWindowId;
+        this.directionArg = directionArg;
+    }
+
+    saveTo(stateFilePath)
+    {
+        const stateJson = JSON.stringify(this);
+        fs.writeFileSync(stateFilePath, stateJson, { flag: 'w' });
+    }
+
+    static loadFrom(stateFilePath)
+    {
+        if (!fs.existsSync(stateFilePath))
+            return null;
+        const buff = fs.readFileSync(stateFilePath, { flag: 'r' });
+
+        /**@type {AppState} data*/
+        const data = JSON.parse(buff);
+        if (!data.processId)
+            return null;
+
+        return new AppState(data.processId, data.startWindowId, data.directionArg);
+    }
+}
 
 async function getCurrentVisibleWindows()
 {
@@ -309,20 +341,6 @@ function _getDistance(currentWindow, otherWindow)
     return xDiff * xDiff + yDiff * yDiff;
 }
 
-function _checkInput(directionArg)
-{
-    const acceptedArgs = ['left', 'up', 'right', 'down', 'left-up', 'left-down', 'right-up', 'right-down'];
-    if (acceptedArgs.includes(directionArg))
-        return;
-
-    const errorString = 'Given direction argument was wrong. I got: ' + directionArg;
-    console.error(errorString);
-    fileLogger.writeLog(errorString);
-    console.log('The direction arg should be one of:');
-    console.log(acceptedArgs);
-    process.exit(1);
-}
-
 async function emergencyFocusAnyWindow(foundKeys, windows)
 {
     fileLogger.writeLog(`   WARNING - no starting window found: selecting first window I get!`);
@@ -345,23 +363,30 @@ function delay(millisec)
     return new Promise((resolve, reject) => setTimeout(resolve, millisec));
 }
 
-/**
- * Glorious main method/entry-point
- */
-(async () =>
+function _checkInput(directionArg)
 {
-    fileLogger.writeLog(`${new Date(Date.now()).toUTCString()}`);
-    fileLogger.writeLog(`Starting 'focus-next.js'...\n\n`);
-    const minTimeHandle = delay(300);
+    const acceptedArgs = settings.DIRECTIONS.concat(settings.DIAGONAL_DIRECTIONS);
+    if (acceptedArgs.includes(directionArg))
+        return;
 
-    var directionArg = process.argv[2];
-    _checkInput(directionArg);
+    const errorString = 'Given direction argument was wrong. I got: ' + directionArg;
+    console.error(errorString);
+    fileLogger.writeLog(errorString);
+    console.log('The direction arg should be one of:');
+    console.log(acceptedArgs);
+    process.exit(1);
+}
 
+/**
+ * 2nd Level main method: handles processing of individual
+ * user commands
+ */
+async function handleUserInput(focusedId, directionArg)
+{
     // 1.) get state: all currently visible windos and their positions
     fileLogger.writeLog(`1:: trying to get all windows...`);
     const windows = await getCurrentVisibleWindows();
 
-    const focusedId = await tryAndLogErrorsAway(api.getCurrentFocusedWindowId);
     const currentFocusedWin = windows[focusedId];
     delete windows[focusedId];
 
@@ -384,11 +409,69 @@ function delay(millisec)
     else {
         fileLogger.writeLog('!!! Found no window to focus!');
     }
+}
+
+/**
+ * Main entry-point
+ */
+(async () =>
+{
+    const minTimeHandle = delay(300);
+
+    fileLogger.writeLog(`${new Date(Date.now()).toUTCString()}`);
+    fileLogger.writeLog(`Starting 'focus-next.js'...\n\n`);
+
+    let directionArg = process.argv[2];
+    _checkInput(directionArg);
+    let focusedId = await tryAndLogErrorsAway(api.getCurrentFocusedWindowId);
+    let needRemoveAppState = false;
+    if (settings.USE_DIAGONAL_COMBINATION && !settings.DIAGONAL_DIRECTIONS.includes(directionArg)) {
+        const stateFilePath = settings.getStateFilePath();
+        const previousAppState = AppState.loadFrom(stateFilePath);
+
+        if (previousAppState) {
+            const newdirectionArg = mergeDirections(previousAppState.directionArg, directionArg);
+
+            if (newdirectionArg) {
+                directionArg = newdirectionArg;
+                try { process.kill(previousAppState.processId); } catch { }
+                fs.rmSync(stateFilePath);
+                focusedId = previousAppState.startWindowId;
+            }
+        }
+        else {
+            const currentState = new AppState(process.pid.toString(), focusedId, directionArg);
+            currentState.saveTo(stateFilePath);
+            needRemoveAppState = true;
+        }
+
+    }
+    await handleUserInput(focusedId, directionArg);
+    if (needRemoveAppState)
+        fs.rmSync(settings.getStateFilePath());
 
     //make sure to keep the command open till the delay is over
     await minTimeHandle;
     fileLogger.writeLog(`\n...finished 'focus-next.js'`);
 })();
+
+
+
+const horizontalDirs = ['left', 'right'];
+const verticalDirs = ['up', 'down'];
+// will and should never be diagonal_directions.
+// logic before call currently guarantees it
+//
+// this assumption/assertion is required here!
+function mergeDirections(oldDirection, currentDirection)
+{
+    if (horizontalDirs.includes(oldDirection) && verticalDirs.includes(currentDirection))
+        return `${oldDirection}-${currentDirection}`;
+    else if (verticalDirs.includes(oldDirection) && horizontalDirs.includes(currentDirection))
+        return `${currentDirection}-${oldDirection}`;
+
+    return null;
+}
 
 async function tryAndLogErrorsAway(asyncFunc)
 {
