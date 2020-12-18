@@ -6,10 +6,8 @@ Currently works only on x11 desktops.
 Use it from commandline as follows:  
 `node focus-next.js DIRECTION`  
 Where DIRECTION is one of:
-* left
-* up
-* right
-* down
+* left, up, right, down
+* left-up, left-down, right-up, right-down
 
 (mind the lower case!)
 
@@ -57,33 +55,38 @@ The user defines the focus in relation to the current window where probably also
 
 **weighting**  
 Prioritize to focus windows that are positioned along the focus direction to honor the users wish for setting a focus in that direction. 
-So even if a window is close and almost in the correct direction (e.g.: between ±45-90°), it should not be selected, if 
-there is a more distanced but also more fitting window for the given direction (like the range ±0-30°).
+So even if a window is closest, but is about 45° (or more) away from the choosen direction, it should not be selected. Instead more distanced windows but within a closer angle range (ideally 0° - 30°) should be selected.
 
-For this reason we simply give a higher weight to candidate windows that are closer to the direction that the user defined. If a candidate windows center point can be reached by 0° deviation from the direction the user specified, it gets a weight of 16. Starting by 45° there is a penalty given (see the weight distribution below).
+In the example depicted below, window **A** is focused and `focus-next right` is called. In this case we want 
+explicitly to focus **C** and **not B**. 
+
+The reason is: C is close to 0° in right-direction from A. Window B on the other hand deviates about 45° from the right direction and thus gets a lower prio. 
+```
+(user: 'focus-next right')
+┏━━━┓*                           ┏━━━┓ ?
+┃ A ┃  --►                       ┃ C ┃
+┗━━━┛                            ┗━━━┛
+             ┏━━━┓ ?          
+             ┃ B ┃           
+             ┗━━━┛       
+         
+        
+ ┏━━━┓ 
+ ┃ D ┃
+ ┗━━━┛        
+         
+```
+
+To implement this we simply give a higher weight to candidate windows that are closer to the direction that the user defined. If a candidate windows center point can be reached by 0° deviation from the direction the user specified, it gets a weight of 1. At angles of about 45° the wieght is almost 0.
 
 ![Weights for different deviation angles](doc/direction_weights.png)
 
-x-axis shows the deviation in degree (of a potential focus candidate)  
-y-axis show the given weight  
-after 45 degree we actually go below 1 and thus imply a negative weight (or penalty)
+*x-axis* shows the deviation angle in degree (of a potential focus candidate)  
+*y-axis* show the resulting weight  
 
 
 **weighting problem**  
-```
-X----                     X---- 
-| A |                     | C |
------    X----            -----
-         | B |         
-         -----          
-        
-         
-        
- X----
- | D |
- -----        
-         
-```
+
 If **A** is focused, `focus-next right` should focus **C** next instead of **B**. 
 However, this might lead to a problem: if the user now actually wants to focus 
 **B**, it might not be possible: in 'right' direction **C** would be selected 
