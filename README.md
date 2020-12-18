@@ -63,9 +63,9 @@ explicitly to focus **C** and **not B**.
 The reason is: C is close to 0° in right-direction from A. Window B on the other hand deviates about 45° from the right direction and thus gets a lower prio. 
 ```
 (user: 'focus-next right')
-┏━━━┓*                           ┏━━━┓ ?
-┃ A ┃  --►                       ┃ C ┃
-┗━━━┛                            ┗━━━┛
+╔═══╗*                           ┏━━━┓ ?
+║ A ║  --►                       ┃ C ┃
+╚═══╝                            ┗━━━┛
              ┏━━━┓ ?          
              ┃ B ┃           
              ┗━━━┛       
