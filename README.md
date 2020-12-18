@@ -110,7 +110,7 @@ stack of windows with a distinct command.
 
 
 # 'installation'
-Package dependencies are (on ubuntu 20)
+Package dependencies are (on ubuntu 20.04 focal)
 * **xdotool**
 * **x11-utils** (or only: xwininfo), on fedore this package is called: `xorg-x11-utils`
 * **nodejs** (tested with version 14, but lower versions might work as well)

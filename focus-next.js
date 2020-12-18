@@ -12,8 +12,35 @@ const { WindowSpec } = require('./common.js');
 //GLOBAL SETTINGS:
 const settings = {
     ENABLE_DEBUG: process.env.FOCUSNEXT_DEBUGLOG == 1, // create a logfile in same dir where focus-next.js is (default: 0)
-    USE_UPPER_LEFT: process.env.FOCUSNEXT_UPPERLEFT == 1 // use upper left point as window coord (default: center point)
+    USE_UPPER_LEFT: process.env.FOCUSNEXT_UPPERLEFT == 1, // use upper left point as window coord (default: center point)
+    USE_DIAGONAL_COMBINATION: process.env.FOCUSNEXT_DIAGONAL_COMBINATION == 1,
+    RUN_DIR_NAME: 'tmp_rundata',
+    STATE_FILE_NAME: 'state.json',
+    DEBUG_LOG_NAME: 'debug.log',
+    APP_NAME: 'focus-next',
 };
+
+if (settings.USE_DIAGONAL_COMBINATION)
+    createRundirIfNotExit();
+
+const fs = require('fs');
+function createRundirIfNotExit()
+{
+    const runDataDirPath = `${__dirname}/${settings.RUN_DIR_NAME}`;
+
+    if (!fs.existsSync(runDataDirPath)) {
+        try {
+            fs.mkdirSync(runDataDirPath)
+        }
+        catch (errorMsg) {
+            console.error(`${settings.APP_NAME} was asked to write files to a rundata directory:`);
+            console.error(`${runDataDirPath}`);
+            console.error(`but that was not possible. Got error:`);
+            console.error(errorMsg);
+            process.exit(1);
+        }
+    }
+}
 
 // cause I currently have no clue how to do this properly in nodejs
 class SimpleFileLogger
@@ -22,14 +49,19 @@ class SimpleFileLogger
     {
         this.isEnabled = settings.ENABLE_DEBUG;
         this.the_log = '';
-        this.fs = require('fs');
-        this.filePath = __dirname + '/debug.log';
+        this.fs = fs;
+        this.filePath = `${__dirname}/${settings.RUN_DIR_NAME}/${settings.DEBUG_LOG_NAME}`;
+
+        if (this.isEnabled) {
+            createRundirIfNotExit();
+        }
     }
 
     writeLog = function (newLogText)
     {
-        if (!this.isEnabled)
+        if (!this.isEnabled) {
             return;
+        }
         this.the_log += '\n' + newLogText;
 
         this.fs.writeFileSync(this.filePath, this.the_log + '\n', function (err, data)
@@ -304,6 +336,13 @@ async function emergencyFocusAnyWindow(foundKeys, windows)
     process.exit(0);
 }
 
+/**@param {number} millisec */
+/**@returns {Promise} */
+function delay(millisec)
+{
+    return new Promise((resolve, reject) => setTimeout(resolve, millisec));
+}
+
 /**
  * Glorious main method/entry-point
  */
@@ -311,6 +350,7 @@ async function emergencyFocusAnyWindow(foundKeys, windows)
 {
     fileLogger.writeLog(`${new Date(Date.now()).toUTCString()}`);
     fileLogger.writeLog(`Starting 'focus-next.js'...\n\n`);
+    const minTimeHandle = delay(300);
 
     var directionArg = process.argv[2];
     _checkInput(directionArg);
@@ -339,9 +379,12 @@ async function emergencyFocusAnyWindow(foundKeys, windows)
         fileLogger.writeLog(`focussing: [${windows[nextId].name}]`);
         await api.focusNext(nextId);
     }
-    else
+    else {
         fileLogger.writeLog('!!! Found no window to focus!');
+    }
 
+    //make sure to keep the command open till the delay is over
+    await minTimeHandle;
     fileLogger.writeLog(`\n...finished 'focus-next.js'`);
 })();
 
