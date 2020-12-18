@@ -15,7 +15,7 @@ const { WindowSpec } = require('./common.js');
 const settings = {
     ENABLE_DEBUG: process.env.FOCUSNEXT_DEBUGLOG == 1, // create a logfile in same dir where focus-next.js is (default: 0)
     USE_UPPER_LEFT: process.env.FOCUSNEXT_UPPERLEFT == 1, // use upper left point as window coord (default: center point)
-    USE_DIAGONAL_COMBINATION: process.env.FOCUSNEXT_DIAGONAL_COMBINATION == 1,
+    USE_DIAGONAL_COMBINATION: process.env.FOCUSNEXT_DIAGONAL_COMBINATION ? process.env.FOCUSNEXT_DIAGONAL_COMBINATION == 1 : true,
     RUN_DIR_NAME: 'tmp_rundata',
     STATE_FILE_NAME: 'state.json',
     DEBUG_LOG_NAME: 'debug.log',
